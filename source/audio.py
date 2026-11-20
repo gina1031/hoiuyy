@@ -44,7 +44,7 @@ fade=np.minimum(1,t/1.0)*np.clip((DUR-t)/1.2,0,1)
 music*=fade
 music/=np.abs(music).max()*1.1
 # whooshes at scene cuts
-cuts=[5.0,9.5,15.5,24.0,29.5,34.0,37.5,47.5,54.5]
+cuts=[5.0,9.5,16.3,24.3,30.1,34.9,37.1,46.5,53.9]
 sfx=np.zeros(N)
 for c in cuts:
     L=int(0.5*SR); n=rng.standard_normal(L)

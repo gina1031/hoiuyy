@@ -13,20 +13,20 @@ def F(name, size): return ImageFont.truetype(FD + name, size)
 # ---------------- scenes ----------------
 # rects are in storyboard panel-local px (x, y, w); h derived as w*9/16
 SCENES = [  # (start, end)
-    (0.0, 5.0), (5.0, 9.5), (9.5, 15.5), (15.5, 24.0), (24.0, 29.5),
-    (29.5, 37.5), (37.5, 47.5), (47.5, 54.5), (54.5, 60.0)]
+    (0.0, 5.0), (5.0, 9.5), (9.5, 16.3), (16.3, 24.3), (24.3, 30.1),
+    (30.1, 37.1), (37.1, 46.5), (46.5, 53.9), (53.9, 60.0)]
 # shots: (scene, t0, t1, panel, rect_start, rect_end)
 SHOTS = [
     (1, 0.0, 5.0, 1, (0, 4, 318), (40, 22, 250)),
     (2, 5.0, 9.5, 2, (0, 2, 345), (172, 2, 345)),
-    (3, 9.5, 15.5, 3, (0, 14, 300), (48, 4, 262)),
-    (4, 15.5, 24.0, 4, (150, 0, 334), (140, 10, 290)),
-    (5, 24.0, 29.5, 5, (0, 0, 334), (24, 22, 290)),
-    (6, 29.5, 34.0, 6, (2, 0, 255), (40, 10, 215)),
-    (6, 34.0, 37.5, 6, (340, 0, 179), (362, 10, 150)),
-    (7, 37.5, 47.5, 7, (0, 10, 285), (10, 22, 250)),
-    (8, 47.5, 54.5, 'blur', None, None),
-    (9, 54.5, 60.0, 9, (0, 0, 320), (26, 16, 276)),
+    (3, 9.5, 16.3, 3, (0, 14, 300), (48, 4, 262)),
+    (4, 16.3, 24.3, 4, (150, 0, 334), (140, 10, 290)),
+    (5, 24.3, 30.1, 5, (0, 0, 334), (24, 22, 290)),
+    (6, 30.1, 34.9, 6, (2, 0, 255), (40, 10, 215)),
+    (6, 34.9, 37.1, 6, (340, 0, 179), (362, 10, 150)),
+    (7, 37.1, 46.5, 7, (0, 10, 285), (10, 22, 250)),
+    (8, 46.5, 53.9, 'blur', None, None),
+    (9, 53.9, 60.0, 9, (0, 0, 320), (26, 16, 276)),
 ]
 XF = 0.32  # crossfade length
 
@@ -218,36 +218,55 @@ VO = [
     (0.4, "Introducing a double storey terrace house, located at Shah Alam Sek 30."),
     (5.35, "A modern and practical home, designed for comfortable family living."),
     (9.85, "Featuring a modern facade, contemporary design, and large windows that bring in natural light."),
-    (15.85, "A spacious ground floor with a welcoming living area, and a well-planned dining space. Perfect for family time and entertaining."),
-    (24.35, "A practical kitchen with ample storage, and good ventilation, for everyday convenience."),
-    (29.85, "Upstairs, find comfortable bedrooms that offer privacy, and a relaxing space for the whole family."),
-    (37.85, "Enjoy a strategic location in Shah Alam Sek 30, with easy access to schools, shopping and dining, major highways, and recreational areas."),
-    (47.85, "A double storey terrace house in Shah Alam Sek 30. A practical, family-friendly home, in a great location."),
-    (54.85, "Interested in this home? Contact us today to find out more, or arrange a viewing."),
+    (16.65, "A spacious ground floor with a welcoming living area, and a well-planned dining space. Perfect for family time and entertaining."),
+    (24.65, "A practical kitchen with ample storage, and good ventilation, for everyday convenience."),
+    (30.45, "Upstairs, find comfortable bedrooms that offer privacy, and a relaxing space for the whole family."),
+    (37.45, "Enjoy a strategic location in Shah Alam Sek 30, with easy access to schools, shopping and dining, major highways, and recreational areas."),
+    (46.85, "A double storey terrace house in Shah Alam Sek 30. A practical, family-friendly home, in a great location."),
+    (54.25, "Interested in this home? Contact us today to find out more, or arrange a viewing."),
 ]
-VO_DUR = [4.458, 3.553, 5.143, 6.721, 4.621, 5.074, 8.696, 6.338, 4.19]
 GOLDWORDS = {'double', 'storey', 'terrace', 'house', 'shah', 'alam', 'sek', '30', 'modern', 'practical', 'natural', 'light',
              'spacious', 'ground', 'floor', 'kitchen', 'storage', 'ventilation', 'bedrooms', 'privacy', 'location',
              'schools', 'highways', 'family-friendly', 'contact', 'today', 'viewing', 'whole', 'family', 'facade', 'windows',
              'dining', 'living', 'shopping'}
 
+import json as _json
+def words_of(i):
+    a = _json.load(open(f'{BASE}/el/{i}.json'))
+    ch, st, en = a['characters'], a['character_start_times_seconds'], a['character_end_times_seconds']
+    out, cur, cs = [], '', None
+    for c, a0, a1 in zip(ch, st, en):
+        if c.isspace():
+            if cur: out.append((cur, cs, pe)); cur = ''
+            continue
+        if not cur: cs = a0
+        cur += c; pe = a1
+    if cur: out.append((cur, cs, pe))
+    return out
+
+WORDS = {i: words_of(i) for i in range(1, 10)}
+def wt(scene, word, nth=0):
+    """local time (relative to scene start) when `word` starts being spoken"""
+    st = VO[scene - 1][0]; hits = [w for w in WORDS[scene] if w[0].lower().strip('.,?').startswith(word)]
+    return st + hits[nth][1] - SCENES[scene - 1][0]
+
 def build_captions():
     caps = []
-    for (st, text), dur in zip(VO, VO_DUR):
-        words = text.split()
+    for i, (st, _) in enumerate(VO, 1):
+        ws = [(w.replace('Section', 'Sek'), a, b) for w, a, b in WORDS[i]]
         chunks, cur = [], []
-        for w_ in words:
+        for w_ in ws:
             cur.append(w_)
-            if len(' '.join(cur)) >= 16 or w_.endswith(('.', ',', '?')) and len(cur) >= 2:
+            txt = ' '.join(x[0] for x in cur)
+            if len(txt) >= 16 or (w_[0].endswith(('.', ',', '?')) and len(cur) >= 2):
                 chunks.append(cur); cur = []
         if cur:
             if chunks and len(cur) == 1: chunks[-1] += cur
             else: chunks.append(cur)
-        total = sum(len(' '.join(c)) + 4 for c in chunks)
-        speak = dur - 0.25; t = st
-        for c in chunks:
-            d = speak * (len(' '.join(c)) + 4) / total
-            caps.append((t, t + d, c)); t += d
+        for k, c in enumerate(chunks):
+            a = st + c[0][1] - 0.05
+            b = st + (chunks[k + 1][0][1] - 0.05 if k + 1 < len(chunks) else c[-1][2] + 0.35)
+            caps.append((a, b, [x[0] for x in c]))
     return caps
 
 def caption_sprite(words):
@@ -362,15 +381,15 @@ def render(fi):
         a = anim(lt, 0.45, 0.55); paste(fr, SP['t2'], 80 - 50 * (1 - a), 190, a * A)
     elif sc == 3:
         a = anim(lt, 0.2, 0.45); paste(fr, SP['c3'], 80, 110, min(1, a * 2) * A, scale=0.7 + 0.3 * ease_back((lt - 0.2) / 0.45))
-        for k, ti in enumerate([0.9, 2.0, 3.2]):
+        for k, ti in enumerate([wt(3, 'modern'), wt(3, 'contemporary'), wt(3, 'large')]):
             a = anim(lt, ti, 0.5); paste(fr, SP['f3'][k], 1840 + 200 * (1 - a), 290 + k * 170, a * A, anchor='rt')
     elif sc == 4:
         a = anim(lt, 0.2, 0.45); paste(fr, SP['tag4'], 80, 110, min(1, a * 2) * A, scale=0.7 + 0.3 * ease_back((lt - 0.2) / 0.45))
-        for k, ti in enumerate([2.0, 4.3]):
+        for k, ti in enumerate([wt(4, 'welcoming'), wt(4, 'well-planned')]):
             a = anim(lt, ti, 0.5); paste(fr, SP['f4'][k], 1840 + 200 * (1 - a), 330 + k * 180, a * A, anchor='rt')
     elif sc == 5:
         a = anim(lt, 0.2, 0.45); paste(fr, SP['tag5'], 80, 110, min(1, a * 2) * A, scale=0.7 + 0.3 * ease_back((lt - 0.2) / 0.45))
-        for k, ti in enumerate([0.9, 2.0, 3.0]):
+        for k, ti in enumerate([wt(5, 'practical') + 0.3, wt(5, 'ample'), wt(5, 'good')]):
             a = anim(lt, ti, 0.45); y = 300 + k * 150
             paste(fr, SP['f5'][k], 1820 + 200 * (1 - a), y, a * A, anchor='rt')
             b = (lt - ti - 0.3) / 0.3
@@ -378,12 +397,12 @@ def render(fi):
                 x0 = 1820 - 560 + 26
                 paste(fr, SP['tick'], x0 + 28, y + 52, A, scale=0.5 + 0.5 * ease_back(b), anchor='c')
     elif sc == 6:
-        a = anim(lt, 0.2, 0.45); fade = 1 - ease_io((lt - 4.2) / 0.3)
+        a = anim(lt, 0.2, 0.45); fade = 1 - ease_io((lt - 4.5) / 0.3)
         paste(fr, SP['tag6'], 80, 110, min(1, a * 2) * A * fade, scale=0.7 + 0.3 * ease_back((lt - 0.2) / 0.45))
-        a = anim(lt, 4.75, 0.55); paste(fr, SP['f6'], 1840 + 220 * (1 - a), 330, a * A, anchor='rt')
+        a = anim(lt, 4.95, 0.55); paste(fr, SP['f6'], 1840 + 220 * (1 - a), 330, a * A, anchor='rt')
     elif sc == 7:
         # pulsing rings at baked pin
-        sh = SHOTS[7]; k = ease_io(lt / 10.0)
+        sh = SHOTS[7]; k = ease_io(lt / (sh[2] - sh[1]))
         x = sh[4][0] + (sh[5][0] - sh[4][0]) * k; y = sh[4][1] + (sh[5][1] - sh[4][1]) * k; w = sh[4][2] + (sh[5][2] - sh[4][2]) * k
         punch = 1 + 0.07 * (1 - ease_out(lt / 0.45)); cx, cy = x + w / 2, y + w * 9 / 32; w /= punch; x, y = cx - w / 2, cy - w * 9 / 32
         px = (150 - x) * W / w; py = (113 - y) * W / w
@@ -393,12 +412,12 @@ def render(fi):
             d.ellipse((px - r, py - r * 0.55, px + r, py + r * 0.55), outline=GOLD2 + (al,), width=5)
         fr.alpha_composite(ring)
         a = anim(lt, 0.2, 0.45); paste(fr, SP['tag7'], 80, 110, min(1, a * 2) * A, scale=0.7 + 0.3 * ease_back((lt - 0.2) / 0.45))
-        for k, ti in enumerate([3.4, 4.5, 5.7, 7.1]):
+        for k, ti in enumerate([wt(7, 'schools'), wt(7, 'shopping'), wt(7, 'major'), wt(7, 'recreational')]):
             a = anim(lt, ti, 0.5); paste(fr, SP['f7'][k], 80 - 220 * (1 - a), [235, 380, 525, 700][k], a * A)
     elif sc == 8:
         a = anim(lt, 0.15, 0.5); paste(fr, SP['t8'], W / 2, 175 - 30 * (1 - a), a * A, anchor='c')
         d = ImageDraw.Draw(fr)
-        for k, ti in enumerate([0.5, 1.3, 2.1, 2.9]):
+        for k, ti in enumerate([wt(8, 'double'), wt(8, 'terrace'), wt(8, 'family-friendly'), wt(8, 'great')]):
             cx = 420 + k * 360
             b = (lt - ti) / 0.5
             if b > 0: paste(fr, SP['f8'][k], cx, 500, min(1, b * 2) * A, scale=0.5 + 0.5 * ease_back(b), anchor='c')
@@ -407,12 +426,12 @@ def render(fi):
                 if c > 0: d.line((cx + 180, 500 - 120 * c, cx + 180, 500 + 120 * c), fill=(234, 186, 76, int(160 * A)), width=3)
     elif sc == 9:
         a = anim(lt, 0.25, 0.55); paste(fr, SP['t9'], 1840 + 60 * (1 - a), 250, a * A, anchor='rt')
-        b = (lt - 1.6) / 0.5
+        tb = wt(9, 'contact'); b = (lt - tb) / 0.5
         if b > 0:
-            pulse = 1 + 0.035 * math.sin(max(0, lt - 2.2) * 2 * math.pi * 1.4) * (lt > 2.2)
+            pulse = 1 + 0.035 * math.sin(max(0, lt - tb - 0.6) * 2 * math.pi * 1.4) * (lt > tb + 0.6)
             paste(fr, SP['btn'], 1840 - SP['btn'].width / 2 + SP['btn'].info['pad'], 600, min(1, b * 2) * A,
                   scale=(0.5 + 0.5 * ease_back(b)) * pulse, anchor='c')
-        a = anim(lt, 2.5, 0.5); paste(fr, SP['sub9'], 1840, 710, a * A, anchor='rt')
+        a = anim(lt, wt(9, 'find'), 0.5); paste(fr, SP['sub9'], 1840, 710, a * A, anchor='rt')
 
     # persistent location chip (after intro)
     if t >= 5.0:
